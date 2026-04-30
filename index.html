@@ -387,7 +387,6 @@
     startClock();
     renderPills();
     loadLog();
-    setInterval(loadLog, 30000); // auto-refresh every 30 seconds
   });
 
   // ── Live Clock ────────────────────────────────────────────
@@ -448,12 +447,7 @@
       var color  = action === "CHECK IN" ? "success" : "error";
       showToast(emoji + " " + name + " — " + action + " at " + time, color);
       document.getElementById("note-input").value = "";
-
-      // Add to local log immediately
-      addRowToLog({ name: name, time: time, action: action, note: note });
       setLoading(action, false);
-
-      // Save employee name for future quick-select
       saveEmployee(name);
     })
     .catch(function (err) {
@@ -484,131 +478,12 @@
     label.style.display = loading ? "none"  : "block";
   }
 
-  // ── Load Today's Log via Google Sheets gviz API (no CORS) ─
-  var SHEET_ID   = "1heXL2T1viXICxBVWnl-o6QjtJd_lALFAhJNGbUUZPho";
-  var SHEET_NAME_DISPLAY = "Attendance";
-
-  function loadLog() {
-    var tbody = document.getElementById("log-body");
-    tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">⏳</span>Loading records…</div></td></tr>';
-    document.getElementById("log-count").textContent = "loading…";
-    document.getElementById("refresh-btn").textContent = "↻ Loading…";
-    document.getElementById("refresh-btn").disabled = true;
-
-    var cbName = "gviz_cb_" + Date.now();
-    var script = document.createElement("script");
-    var timer  = setTimeout(function () {
-      cleanup();
-      showFetchError("⚠️ Timeout — make sure sheet is shared as 'Anyone with link can view'");
-    }, 10000);
-
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-      if (script.parentNode) document.body.removeChild(script);
-      document.getElementById("refresh-btn").textContent = "↻ Refresh";
-      document.getElementById("refresh-btn").disabled = false;
-    }
-
-    window[cbName] = function (res) {
-      cleanup();
-      try {
-        if (!res || !res.table) { showFetchError("⚠️ No data — share sheet as 'Anyone with link'"); return; }
-
-        var cols = res.table.cols; // [{label, type}, ...]
-        var rows = res.table.rows; // [{c:[{v,f},...]}]
-
-        var today   = new Date().toLocaleDateString("en-CA");
-        var records = [];
-
-        rows.forEach(function (row) {
-          if (!row || !row.c) return;
-          var c    = row.c;
-          var name   = c[0] && c[0].v ? String(c[0].v) : "";
-          var date   = c[1] && c[1].v ? String(c[1].v) : "";
-          var time   = c[2] && c[2].v ? String(c[2].v) : "";
-          var action = c[3] && c[3].v ? String(c[3].v) : "";
-          var note   = c[4] && c[4].v ? String(c[4].v) : "";
-
-          // Skip header row if present
-          if (name.toLowerCase() === "employee name") return;
-
-          // Filter by today's date (sheet stores as YYYY-MM-DD string)
-          if (date && date !== today) return;
-
-          records.push({ name: name, date: date, time: time, action: action, note: note });
-        });
-
-        renderLog(records);
-      } catch (e) {
-        showFetchError("⚠️ Parse error: " + e.message);
-      }
-    };
-
-    script.onerror = function () {
-      cleanup();
-      showFetchError("⚠️ Could not reach sheet — share as 'Anyone with link can view'");
-    };
-
-    var url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
-              "/gviz/tq?tqx=out:json;responseHandler:" + cbName +
-              "&sheet=" + encodeURIComponent(SHEET_NAME_DISPLAY);
-    script.src = url;
-    document.body.appendChild(script);
-  }
-
-  function showFetchError(msg) {
-    var tbody = document.getElementById("log-body");
-    tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">⚠️</span>' + msg + '</div></td></tr>';
-    document.getElementById("log-count").textContent = "0 records";
-  }
-
+  // ── Log functions removed (log section hidden) ───────────
+  function loadLog() {}
+  function showFetchError() {}
+  function renderLog() {}
+  function addRowToLog() {}
   function loadLogJsonp() {}
-
-  function renderLog(records) {
-    var tbody = document.getElementById("log-body");
-    tbody.innerHTML = "";
-    document.getElementById("log-count").textContent = records.length + " record" + (records.length !== 1 ? "s" : "");
-
-    if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">📭</span>No records yet for today.</div></td></tr>';
-      return;
-    }
-
-    records.slice().reverse().forEach(function (r) {
-      addRowToLog(r, false);
-    });
-  }
-
-  function addRowToLog(r, prepend) {
-    var tbody = document.getElementById("log-body");
-
-    // Remove empty state if present
-    var empty = document.getElementById("empty-state");
-    if (empty) empty.closest("tr").remove();
-
-    var isIn  = r.action === "CHECK IN";
-    var badge = isIn
-      ? '<span class="badge badge-in">▶ IN</span>'
-      : '<span class="badge badge-out">◼ OUT</span>';
-
-    var tr = document.createElement("tr");
-    tr.innerHTML =
-      '<td><strong>' + esc(r.name) + '</strong></td>' +
-      '<td class="time-mono">' + esc(r.time) + '</td>' +
-      '<td>' + badge + '</td>' +
-      '<td class="note-text">' + (r.note ? esc(r.note) : '<span style="color:var(--border)">—</span>') + '</td>';
-
-    if (prepend !== false) {
-      tbody.insertBefore(tr, tbody.firstChild);
-    } else {
-      tbody.appendChild(tr);
-    }
-
-    // Update count
-    var count = tbody.querySelectorAll("tr").length;
-    document.getElementById("log-count").textContent = count + " record" + (count !== 1 ? "s" : "");
-  }
 
   function esc(s) {
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
