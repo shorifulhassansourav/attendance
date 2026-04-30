@@ -62,6 +62,17 @@
     }
     .logo-text span { color: var(--in); }
 
+    .wear-on {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      margin-left: 4px;
+    }
+
     #live-clock {
       font-family: 'DM Mono', monospace;
       font-size: 13px; color: var(--muted);
@@ -318,6 +329,7 @@
     <div class="logo">
       <div class="logo-icon">🕐</div>
       <div class="logo-text">Attend<span>X</span></div>
+      <div class="wear-on">Wear ON</div>
     </div>
     <div id="live-clock">Loading...</div>
   </header>
@@ -393,7 +405,7 @@
 
   <script>
   // ── Config ────────────────────────────────────────────────
-  var SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbyToTz_D8o8Ppmt5iOFTdS11NPHl_UAWnpephnOPoURUVL4ukoKxFrT4-nZgyWrRzWMCQ/exec";
+  var SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbw0QtcQt4sCcdzbFH_n-gqro8T0k4-YagfnPLTEDKJtVM3SFN75UpEEs_9B0WVn0wZeGw/exec";
   var EMPLOYEES_KEY  = "attendx_employees_v2";
 
   // Default quick-select employee names (edit as you like)
@@ -404,6 +416,7 @@
     startClock();
     renderPills();
     loadLog();
+    setInterval(loadLog, 30000); // auto-refresh every 30 seconds
   });
 
   // ── Live Clock ────────────────────────────────────────────
@@ -500,23 +513,86 @@
     label.style.display = loading ? "none"  : "block";
   }
 
-  // ── Load Today's Log from Sheet ───────────────────────────
+  // ── Load Today's Log via Google Sheets gviz API (no CORS) ─
+  var SHEET_ID   = "1heXL2T1viXICxBVWnl-o6QjtJd_lALFAhJNGbUUZPho";
+  var SHEET_NAME_DISPLAY = "Attendance";
+
   function loadLog() {
-    var url = getUrl();
-    if (!url) return;
+    var tbody = document.getElementById("log-body");
+    tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">⏳</span>Loading records…</div></td></tr>';
+    document.getElementById("log-count").textContent = "loading…";
+    document.getElementById("refresh-btn").textContent = "↻ Loading…";
+    document.getElementById("refresh-btn").disabled = true;
 
-    var today = new Date().toLocaleDateString("en-CA");
-    var fullUrl = url + "?date=" + encodeURIComponent(today);
+    var cbName = "gviz_cb_" + Date.now();
+    var script = document.createElement("script");
+    var timer  = setTimeout(function () {
+      cleanup();
+      showFetchError("⚠️ Timeout — make sure sheet is shared as 'Anyone with link can view'");
+    }, 10000);
 
-    fetch(fullUrl)
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.status === "success") renderLog(data.records || []);
-      })
-      .catch(function () {
-        // silent fail — log will be updated locally via addRowToLog
-      });
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) document.body.removeChild(script);
+      document.getElementById("refresh-btn").textContent = "↻ Refresh";
+      document.getElementById("refresh-btn").disabled = false;
+    }
+
+    window[cbName] = function (res) {
+      cleanup();
+      try {
+        if (!res || !res.table) { showFetchError("⚠️ No data — share sheet as 'Anyone with link'"); return; }
+
+        var cols = res.table.cols; // [{label, type}, ...]
+        var rows = res.table.rows; // [{c:[{v,f},...]}]
+
+        var today   = new Date().toLocaleDateString("en-CA");
+        var records = [];
+
+        rows.forEach(function (row) {
+          if (!row || !row.c) return;
+          var c    = row.c;
+          var name   = c[0] && c[0].v ? String(c[0].v) : "";
+          var date   = c[1] && c[1].v ? String(c[1].v) : "";
+          var time   = c[2] && c[2].v ? String(c[2].v) : "";
+          var action = c[3] && c[3].v ? String(c[3].v) : "";
+          var note   = c[4] && c[4].v ? String(c[4].v) : "";
+
+          // Skip header row if present
+          if (name.toLowerCase() === "employee name") return;
+
+          // Filter by today's date (sheet stores as YYYY-MM-DD string)
+          if (date && date !== today) return;
+
+          records.push({ name: name, date: date, time: time, action: action, note: note });
+        });
+
+        renderLog(records);
+      } catch (e) {
+        showFetchError("⚠️ Parse error: " + e.message);
+      }
+    };
+
+    script.onerror = function () {
+      cleanup();
+      showFetchError("⚠️ Could not reach sheet — share as 'Anyone with link can view'");
+    };
+
+    var url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
+              "/gviz/tq?tqx=out:json;responseHandler:" + cbName +
+              "&sheet=" + encodeURIComponent(SHEET_NAME_DISPLAY);
+    script.src = url;
+    document.body.appendChild(script);
   }
+
+  function showFetchError(msg) {
+    var tbody = document.getElementById("log-body");
+    tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">⚠️</span>' + msg + '</div></td></tr>';
+    document.getElementById("log-count").textContent = "0 records";
+  }
+
+  function loadLogJsonp() {}
 
   function renderLog(records) {
     var tbody = document.getElementById("log-body");
