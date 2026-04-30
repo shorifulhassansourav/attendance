@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendX — Attendance System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Variables ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161923;
+      --surface2:  #1e2330;
+      --border:    #2a2f3d;
+      --text:      #e8eaf0;
+      --muted:     #6b7185;
+      --in:        #00e5a0;
+      --in-dark:   #00b37d;
+      --out:       #ff7043;
+      --out-dark:  #e64a19;
+      --accent:    #7c8cff;
+      --radius:    14px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── Noise texture overlay ─────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      position: relative; z-index: 1;
+      padding: 28px 32px 0;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--in), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+    }
+    .logo-text span { color: var(--in); }
+
+    #live-clock {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px; color: var(--muted);
+      background: var(--surface2);
+      padding: 6px 14px; border-radius: 30px;
+      border: 1px solid var(--border);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Main layout ───────────────────────────────────── */
+    main {
+      position: relative; z-index: 1;
+      max-width: 820px; margin: 0 auto;
+      padding: 32px 20px 60px;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+
+    /* ── Config Banner (hidden after setup) ────────────── */
+    #setup-banner {
+      background: linear-gradient(135deg, #1c1f2e, #1e2330);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: 13px; color: var(--muted);
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    #setup-banner .icon { font-size: 20px; flex-shrink: 0; }
+    #setup-banner a { color: var(--accent); }
+    #setup-banner strong { color: var(--text); }
+
+    /* ── Card ──────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #3a3f50; }
+
+    .card-title {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 20px;
+    }
+
+    /* ── Form Inputs ───────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field label {
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .field input, .field textarea, .field select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,140,255,0.15);
+    }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .field select option { background: var(--surface2); }
+
+    /* ── Employee list pills ───────────────────────────── */
+    #employee-pills {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 4px;
+    }
+    .pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 6px 14px;
+      font-size: 13px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Action buttons ────────────────────────────────── */
+    .btn-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 18px 10px;
+      border: none; border-radius: 12px;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.3px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-in {
+      background: linear-gradient(135deg, var(--in), var(--in-dark));
+      color: #001a0e;
+      box-shadow: 0 4px 20px rgba(0,229,160,0.25);
+    }
+    .btn-in:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(0,229,160,0.4); transform: translateY(-1px); }
+
+    .btn-out {
+      background: linear-gradient(135deg, var(--out), var(--out-dark));
+      color: #1a0800;
+      box-shadow: 0 4px 20px rgba(255,112,67,0.25);
+    }
+    .btn-out:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(255,112,67,0.4); transform: translateY(-1px); }
+
+    /* ── Ripple ────────────────────────────────────────── */
+    .ripple {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transform: scale(0); animation: ripple-anim 0.5s linear;
+      pointer-events: none;
+    }
+    @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+    /* ── Toast notification ────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 12px 24px;
+      font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 999;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      opacity: 0; pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--in); }
+    #toast.error   { border-color: var(--out); }
+
+    /* ── Spinner ───────────────────────────────────────── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Today's log ───────────────────────────────────── */
+    #log-section { animation: fadeUp 0.4s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .log-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+    }
+    .log-count {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px; padding: 4px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px; color: var(--muted);
+    }
+
+    #refresh-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px;
+      color: var(--muted); font-size: 12px; font-family: 'Syne', sans-serif;
+      cursor: pointer; transition: all 0.15s;
+    }
+    #refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Table ─────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th {
+      text-align: left; padding: 12px 16px;
+      font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--muted); background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .badge-in  { background: rgba(0,229,160,0.12); color: var(--in); }
+    .badge-out { background: rgba(255,112,67,0.12); color: var(--out); }
+
+    .time-mono { font-family: 'DM Mono', monospace; font-size: 13px; }
+    .note-text { color: var(--muted); font-size: 13px; max-width: 180px;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    #empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--muted); font-size: 14px;
+    }
+    #empty-state .emoji { font-size: 36px; display: block; margin-bottom: 10px; }
+
+    /* ── URL config input ──────────────────────────────── */
+    #url-input-row {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    #script-url-input {
+      flex: 1; min-width: 200px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      padding: 10px 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    #script-url-input:focus { border-color: var(--accent); }
+    #save-url-btn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 10px;
+      padding: 10px 20px; font-family: 'Syne', sans-serif;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      white-space: nowrap; transition: opacity 0.2s;
+    }
+    #save-url-btn:hover { opacity: 0.85; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 520px) {
+      header { padding: 20px 16px 0; }
+      main   { padding: 20px 12px 50px; }
+      .card  { padding: 20px 16px; }
+      .btn   { padding: 16px 8px; font-size: 14px; }
+      th, td { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🕐</div>
+      <div class="logo-text">Attend<span>X</span></div>
+    </div>
+    <div id="live-clock">Loading...</div>
+  </header>
+
+  <main>
+
+    <!-- Setup banner & URL card hidden — URL is hardcoded -->
+
+    <!-- ③ Attendance Card -->
+    <div class="card">
+      <div class="card-title">👤 Mark Attendance</div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label>Employee Name</label>
+        <input type="text" id="emp-name" placeholder="Type your full name…" autocomplete="off" />
+      </div>
+
+      <!-- Quick-select pills -->
+      <div id="employee-pills"></div>
+
+      <div class="field" style="margin-top:18px;">
+        <label>Note (optional)</label>
+        <textarea id="note-input" placeholder="e.g. Working from home, Doctor appointment…"></textarea>
+      </div>
+
+      <div class="btn-row" style="margin-top:20px;">
+        <button class="btn btn-in"  id="btn-in"  onclick="logAttendance('CHECK IN')">
+          <span id="spinner-in"  class="spinner"></span>
+          <span id="label-in">✅ Check In</span>
+        </button>
+        <button class="btn btn-out" id="btn-out" onclick="logAttendance('CHECK OUT')">
+          <span id="spinner-out" class="spinner"></span>
+          <span id="label-out">🔴 Check Out</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ④ Today's Log -->
+    <div class="card" id="log-section">
+      <div class="log-header">
+        <div class="card-title" style="margin-bottom:0;">📋 Today's Log</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="log-count" id="log-count">0 records</span>
+          <button id="refresh-btn" onclick="loadLog()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Time</th>
+              <th>Action</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="4">
+              <div id="empty-state">
+                <span class="emoji">📭</span>
+                No records yet for today.<br>Save your Script URL above, then mark attendance!
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Toast -->
+  <div id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
+
+  <script>
+  // ── Config ────────────────────────────────────────────────
+  var SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbyToTz_D8o8Ppmt5iOFTdS11NPHl_UAWnpephnOPoURUVL4ukoKxFrT4-nZgyWrRzWMCQ/exec";
+  var EMPLOYEES_KEY  = "attendx_employees_v2";
+
+  // Default quick-select employee names (edit as you like)
+  var defaultEmployees = ["Fahim", "Joy", "Sourav"];
+
+  // ── Init ──────────────────────────────────────────────────
+  window.addEventListener("DOMContentLoaded", function () {
+    startClock();
+    renderPills();
+    loadLog();
+  });
+
+  // ── Live Clock ────────────────────────────────────────────
+  function startClock() {
+    function tick() {
+      var now = new Date();
+      document.getElementById("live-clock").textContent =
+        now.toLocaleDateString("en-BD", { weekday:"short", month:"short", day:"numeric" }) +
+        "  " + now.toLocaleTimeString("en-BD", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  function getUrl() { return SCRIPT_URL; }
+
+  // ── Employee Pills ────────────────────────────────────────
+  function renderPills() {
+    var stored = localStorage.getItem(EMPLOYEES_KEY);
+    var names = stored ? JSON.parse(stored) : defaultEmployees;
+    var container = document.getElementById("employee-pills");
+    container.innerHTML = "";
+    names.forEach(function (name) {
+      var pill = document.createElement("div");
+      pill.className = "pill";
+      pill.textContent = name;
+      pill.onclick = function () {
+        document.getElementById("emp-name").value = name;
+        document.querySelectorAll(".pill").forEach(function (p) { p.classList.remove("active"); });
+        pill.classList.add("active");
+      };
+      container.appendChild(pill);
+    });
+  }
+
+  // ── Log Attendance ────────────────────────────────────────
+  function logAttendance(action) {
+    var name = document.getElementById("emp-name").value.trim();
+    if (!name) { showToast("⚠️ Please enter your name first", "error"); return; }
+
+    var url = getUrl();
+
+    var now  = new Date();
+    var date = now.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    var time = now.toLocaleTimeString("en-BD", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    var note = document.getElementById("note-input").value.trim();
+
+    setLoading(action, true);
+
+    fetch(url, {
+      method:  "POST",
+      mode:    "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ name: name, date: date, time: time, action: action, note: note })
+    })
+    .then(function () {
+      var emoji  = action === "CHECK IN" ? "✅" : "🔴";
+      var color  = action === "CHECK IN" ? "success" : "error";
+      showToast(emoji + " " + name + " — " + action + " at " + time, color);
+      document.getElementById("note-input").value = "";
+
+      // Add to local log immediately
+      addRowToLog({ name: name, time: time, action: action, note: note });
+      setLoading(action, false);
+
+      // Save employee name for future quick-select
+      saveEmployee(name);
+    })
+    .catch(function (err) {
+      showToast("❌ Error: " + err.message, "error");
+      setLoading(action, false);
+    });
+  }
+
+  function saveEmployee(name) {
+    var stored = localStorage.getItem(EMPLOYEES_KEY);
+    var names = stored ? JSON.parse(stored) : defaultEmployees.slice();
+    if (!names.includes(name)) {
+      names.unshift(name);
+      if (names.length > 10) names = names.slice(0, 10);
+      localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(names));
+      renderPills();
+    }
+  }
+
+  // ── Loading state ─────────────────────────────────────────
+  function setLoading(action, loading) {
+    var isIn  = action === "CHECK IN";
+    var btn   = document.getElementById(isIn ? "btn-in"  : "btn-out");
+    var spin  = document.getElementById(isIn ? "spinner-in" : "spinner-out");
+    var label = document.getElementById(isIn ? "label-in"  : "label-out");
+    btn.disabled = loading;
+    spin.style.display = loading ? "block" : "none";
+    label.style.display = loading ? "none"  : "block";
+  }
+
+  // ── Load Today's Log from Sheet ───────────────────────────
+  function loadLog() {
+    var url = getUrl();
+    if (!url) return;
+
+    var today = new Date().toLocaleDateString("en-CA");
+    var fullUrl = url + "?date=" + encodeURIComponent(today);
+
+    fetch(fullUrl)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.status === "success") renderLog(data.records || []);
+      })
+      .catch(function () {
+        // silent fail — log will be updated locally via addRowToLog
+      });
+  }
+
+  function renderLog(records) {
+    var tbody = document.getElementById("log-body");
+    tbody.innerHTML = "";
+    document.getElementById("log-count").textContent = records.length + " record" + (records.length !== 1 ? "s" : "");
+
+    if (records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4"><div id="empty-state"><span class="emoji">📭</span>No records yet for today.</div></td></tr>';
+      return;
+    }
+
+    records.slice().reverse().forEach(function (r) {
+      addRowToLog(r, false);
+    });
+  }
+
+  function addRowToLog(r, prepend) {
+    var tbody = document.getElementById("log-body");
+
+    // Remove empty state if present
+    var empty = document.getElementById("empty-state");
+    if (empty) empty.closest("tr").remove();
+
+    var isIn  = r.action === "CHECK IN";
+    var badge = isIn
+      ? '<span class="badge badge-in">▶ IN</span>'
+      : '<span class="badge badge-out">◼ OUT</span>';
+
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td><strong>' + esc(r.name) + '</strong></td>' +
+      '<td class="time-mono">' + esc(r.time) + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td class="note-text">' + (r.note ? esc(r.note) : '<span style="color:var(--border)">—</span>') + '</td>';
+
+    if (prepend !== false) {
+      tbody.insertBefore(tr, tbody.firstChild);
+    } else {
+      tbody.appendChild(tr);
+    }
+
+    // Update count
+    var count = tbody.querySelectorAll("tr").length;
+    document.getElementById("log-count").textContent = count + " record" + (count !== 1 ? "s" : "");
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ── Toast ─────────────────────────────────────────────────
+  var toastTimer;
+  function showToast(msg, type) {
+    var el = document.getElementById("toast");
+    document.getElementById("toast-msg").textContent = msg;
+    el.className = "show " + (type || "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.className = ""; }, 3500);
+  }
+
+  // ── Ripple effect on buttons ──────────────────────────────
+  document.querySelectorAll(".btn").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      var r = document.createElement("span");
+      r.className = "ripple";
+      var rect = btn.getBoundingClientRect();
+      var size = Math.max(rect.width, rect.height);
+      r.style.cssText = "width:" + size + "px;height:" + size + "px;top:" +
+        (e.clientY - rect.top - size/2) + "px;left:" + (e.clientX - rect.left - size/2) + "px;";
+      btn.appendChild(r);
+      setTimeout(function () { r.remove(); }, 600);
+    });
+  });
+  </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+╔══════════════════════════════════════════════════════════════════╗
+║          ATTENDX — COMPLETE SETUP GUIDE (Step by Step)          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+You have 2 files:
+  📄 index.html   — Your attendance website (open this in browser)
+  📄 Code.gs      — Backend script for Google Sheets
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — Open Your Google Sheet
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to: https://docs.google.com/spreadsheets/d/1heXL2T1viXICxBVWnl-o6QjtJd_lALFAhJNGbUUZPho/edit
+2. Look at the bottom tab — note the name of your sheet tab.
+   → If it's NOT named "Attendance", either:
+      a) Rename the tab to: Attendance
+         (Right-click the tab → Rename → type "Attendance")
+      OR
+      b) Edit Code.gs line 3: change "Attendance" to your tab name
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — Create the Apps Script
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. While in your Google Sheet, click the top menu:
+   Extensions → Apps Script
+
+2. A new tab opens with a code editor.
+
+3. DELETE everything in the editor (Ctrl+A then Delete).
+
+4. Open the file "Code.gs" (from your download) in any text editor
+   (Notepad, VS Code, etc.)
+
+5. Copy ALL the code from Code.gs.
+
+6. Paste it into the Apps Script editor.
+
+7. Click the 💾 Save button (or press Ctrl+S).
+   → Name your project: "AttendX" (or anything you like)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — Deploy as Web App (IMPORTANT!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. In the Apps Script editor, click the blue "Deploy" button
+   (top right corner)
+
+2. Click "New deployment"
+
+3. Click the gear icon ⚙ next to "Select type" → Choose "Web app"
+
+4. Fill in the settings:
+   ┌─────────────────────────────────────────────────────────┐
+   │ Description:       AttendX v1                           │
+   │ Execute as:        Me (your Google account)             │
+   │ Who has access:    Anyone  ← VERY IMPORTANT!            │
+   └─────────────────────────────────────────────────────────┘
+
+5. Click "Deploy"
+
+6. Google will ask you to AUTHORIZE — click:
+   "Authorize access" → Choose your Google account →
+   Click "Advanced" → "Go to AttendX (unsafe)" → "Allow"
+   (This is normal for personal scripts — it's YOUR script)
+
+7. You'll see a URL like:
+   https://script.google.com/macros/s/AKfycby.../exec
+
+   ⭐ COPY THIS URL — you'll need it in the next step!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — Run the Website on Your Localhost
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTION A — Simplest (just open the file directly):
+  Double-click index.html → It opens in your browser
+  The URL will look like: file:///C:/Users/you/index.html
+  ✅ This works perfectly!
+
+OPTION B — Run on actual localhost with Python:
+  1. Open Command Prompt / Terminal
+  2. Navigate to the folder where index.html is saved:
+     cd C:\Users\YourName\Downloads\attendance
+  3. Run this command:
+     Python 3:  python -m http.server 8080
+     Python 2:  python -m SimpleHTTPServer 8080
+  4. Open your browser and go to: http://localhost:8080
+  ✅ Now it's running on localhost!
+
+OPTION C — Run with Node.js (if you have it):
+  1. Install a simple server:   npm install -g serve
+  2. Go to the folder:          cd path/to/your/folder
+  3. Run:                       serve .
+  4. Open the URL shown (usually http://localhost:3000)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — Connect the Website to Google Sheets
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Open index.html in your browser (via any method above)
+
+2. You'll see the "Apps Script URL" box at the top
+
+3. Paste the URL you copied in Step 3 into that box
+
+4. Click "Save URL"
+   → The page will say "✓ URL configured — ready to log attendance"
+
+5. That's it! You're ready to use the attendance system! 🎉
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW TO USE THE ATTENDANCE SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Type your name OR click a quick-select pill (name button)
+• Add a note if needed (optional)
+• Click ✅ CHECK IN when you arrive
+• Click 🔴 CHECK OUT when you leave
+• Every entry saves instantly to your Google Sheet with real time!
+• Click ↻ Refresh to load all of today's entries from the sheet
+• The "Today's Log" table shows all records for the current day
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CUSTOMIZING EMPLOYEE NAMES (Quick-Select Pills)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Default names (Alice, Bob, etc.) are placeholders — replace them!
+• Open index.html in a text editor
+• Find this line (around line 180):
+    var defaultEmployees = ["Alice", "Bob", "Charlie", "Diana", "Evan"];
+• Replace with your actual employee names:
+    var defaultEmployees = ["Rahman", "Fatima", "Karim", "Nasrin"];
+• Save the file — the pills will update immediately
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE SHEET COLUMNS (auto-created)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A: Employee Name
+B: Date (YYYY-MM-DD)
+C: Time (HH:MM:SS)
+D: Action (CHECK IN / CHECK OUT)
+E: Note
+F: Server Timestamp (backup)
+
+Rows are color-coded:
+  🟢 Green  = CHECK IN
+  🟡 Yellow = CHECK OUT
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Problem: Data not saving to Google Sheet
+→ Make sure you deployed as "Web App" with "Anyone" access
+→ Make sure you copied the correct /exec URL (not /dev)
+→ Try re-deploying (in Apps Script: Deploy → Manage deployments)
+
+Problem: "Error: Script function not found"
+→ Make sure you pasted ALL of Code.gs correctly
+→ Check that doPost and doGet functions exist in the editor
+
+Problem: Sheet tab not found
+→ Check the sheet tab name matches SHEET_NAME in Code.gs (line 3)
+
+Problem: "Refused to run" in browser console
+→ This is normal for no-cors mode — data still saves! Ignore it.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Need help? The most common issue is Step 3 (deployment settings).
+Make sure "Who has access" is set to "Anyone" — not "Only myself"!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
